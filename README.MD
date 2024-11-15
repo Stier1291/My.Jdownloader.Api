@@ -3,7 +3,7 @@
 This is an simple wrapper for the official My.JDownloader.Api written in c#.
 It's an rewritten and extended version of https://github.com/noone2407/MyJDownloaderApi.
 
-Currently it supports: .NET 4.6 and .NETCore 3.1
+Currently it supports: .NET 4.6, .NETCore 3.1, .NET 8.0 and .NET 9.0
 
 > Feel free to request missing calls, bugs or suggestions for improvements.
 
@@ -42,6 +42,7 @@ device.Jd.DoSomethingCool();
 ### __Version 2.4.6__
 Updated:
 - Updated vulnerable .netcore20 to .netcore31
+- Added .NET 8.0 and .NET 9.0
 - Replaced obsolete project tag 'PackageLicenseUrl' with 'PackageLicense'
 - Replaced obsolete project tag 'PackageIconUrl' with 'IconUrl'
 - Set referenced assemblies framework dependent
