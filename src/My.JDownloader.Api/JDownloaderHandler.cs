@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Web;
 using My.JDownloader.Api.ApiHandler;
 using My.JDownloader.Api.Models.Devices;
@@ -16,9 +17,9 @@ namespace My.JDownloader.Api
         private byte[] _loginSecret;
         private byte[] _deviceSecret;
 
-        
+
         private readonly JDownloaderApiHandler _apiHandler = new JDownloaderApiHandler();
-        
+
         /// <summary>
         /// 
         /// </summary>
@@ -47,7 +48,7 @@ namespace My.JDownloader.Api
         /// <param name="email">Email of the User</param>
         /// <param name="password">Password of the User</param>
         /// <returns>Return if the connection was succesful</returns>
-        public bool Connect(string email, string password)
+        public async Task<bool> ConnectAsync(string email, string password)
         {
             //Calculating the Login and Device secret
             _loginSecret = Utils.GetSecret(email, password, Utils.ServerDomain);
@@ -58,7 +59,7 @@ namespace My.JDownloader.Api
                 $"/my/connect?email={HttpUtility.UrlEncode(email)}&appkey={HttpUtility.UrlEncode(Utils.AppKey)}";
 
             //Calling the queryRequest
-            var response = _apiHandler.CallServer<LoginObject>(connectQueryUrl, _loginSecret);
+            var response = await _apiHandler.CallServerAsync<LoginObject>(connectQueryUrl, _loginSecret).ConfigureAwait(false);
 
             //If the response is null the connection was not successfull
             if (response == null)
@@ -75,14 +76,24 @@ namespace My.JDownloader.Api
         }
 
         /// <summary>
+        /// Fires a connection request to the api.
+        /// </summary>
+        /// <param name="email">Email of the User</param>
+        /// <param name="password">Password of the User</param>
+        /// <returns>Return if the connection was succesful</returns>
+        public bool Connect(string email, string password)
+        {
+            return ConnectAsync(email, password).Result;
+        }
+
+        /// <summary>
         /// Tries to reconnect your client to the api.
         /// </summary>
         /// <returns>True if successful else false</returns>
-        public bool Reconnect()
+        public async Task<bool> ReconnectAsync()
         {
-            string query =
-                $"/my/reconnect?appkey{HttpUtility.UrlEncode(Utils.AppKey)}&sessiontoken={HttpUtility.UrlEncode(LoginObject.SessionToken)}&regaintoken={HttpUtility.UrlEncode(LoginObject.RegainToken)}";
-            var response = _apiHandler.CallServer<LoginObject>(query, LoginObject.ServerEncryptionToken);
+            string query = $"/my/reconnect?appkey{HttpUtility.UrlEncode(Utils.AppKey)}&sessiontoken={HttpUtility.UrlEncode(LoginObject.SessionToken)}&regaintoken={HttpUtility.UrlEncode(LoginObject.RegainToken)}";
+            var response = await _apiHandler.CallServerAsync<LoginObject>(query, LoginObject.ServerEncryptionToken).ConfigureAwait(false);
             if (response == null)
                 return false;
 
@@ -94,31 +105,49 @@ namespace My.JDownloader.Api
         }
 
         /// <summary>
+        /// Tries to reconnect your client to the api.
+        /// </summary>
+        /// <returns>True if successful else false</returns>
+        public bool Reconnect()
+        {
+            return ReconnectAsync().Result;
+        }
+
+        /// <summary>
         /// Disconnects the your client from the api
         /// </summary>
         /// <returns>True if successful else false</returns>
-        public bool Disconnect()
+        public async Task<bool> DisconnectAsync()
         {
             string query = $"/my/disconnect?sessiontoken={HttpUtility.UrlEncode(LoginObject.SessionToken)}";
-            var response = _apiHandler.CallServer<object>(query, LoginObject.ServerEncryptionToken);
+            var response = await _apiHandler.CallServerAsync<object>(query, LoginObject.ServerEncryptionToken).ConfigureAwait(false);
             if (response == null)
                 return false;
 
             LoginObject = null;
             return true;
         }
+
+        /// <summary>
+        /// Disconnects the your client from the api
+        /// </summary>
+        /// <returns>True if successful else false</returns>
+        public bool Disconnect()
+        {
+            return DisconnectAsync().Result;
+        }
         #endregion
-        
+
 
         /// <summary>
         /// Lists all Devices which are currently connected to your my.jdownloader.org account.
         /// </summary>
         /// <returns>Returns an enumerable of your currently connected devices.</returns>
-        public IEnumerable<Device> GetDevices()
+        public async Task<IEnumerable<Device>> GetDevicesAsync()
         {
             List<Device> devices = new List<Device>();
             string query = $"/my/listdevices?sessiontoken={HttpUtility.UrlEncode(LoginObject.SessionToken)}";
-            var response = _apiHandler.CallServer<DeviceJsonResponse>(query, LoginObject.ServerEncryptionToken);
+            var response = await _apiHandler.CallServerAsync<DeviceJsonResponse>(query, LoginObject.ServerEncryptionToken).ConfigureAwait(false);
             if (response == null)
                 return devices;
 
@@ -128,6 +157,33 @@ namespace My.JDownloader.Api
             }
 
             return devices;
+        }
+
+        /// <summary>
+        /// Lists all Devices which are currently connected to your my.jdownloader.org account.
+        /// </summary>
+        /// <returns>Returns an enumerable of your currently connected devices.</returns>
+        public IEnumerable<Device> GetDevices()
+        {
+            return GetDevicesAsync().Result;
+        }
+
+        /// <summary>
+        /// Creates an instance of the DeviceHandler class. 
+        /// This is neccessary to call methods!
+        /// </summary>
+        /// <param name="device">The device you want to call the methods on.</param>
+        /// <returns>An deviceHandler instance.</returns>
+        public async Task<DeviceHandler> GetDeviceHandlerAsync(Device device, bool useJdownloaderApi = false)
+        {
+            if (IsConnected)
+            {
+                //TODO: Make it possible to directly connect to the jdownloader client. If it's not working use the relay server.
+                //var tmp = _apiHandler.CallAction<DefaultReturnObject>(device, "/device/getDirectConnectionInfos",
+                //    null, LoginObject, true);
+                return await DeviceHandler.CreateAsync(device, _apiHandler, LoginObject, useJdownloaderApi).ConfigureAwait(false);
+            }
+            return null;
         }
 
         /// <summary>
@@ -143,7 +199,7 @@ namespace My.JDownloader.Api
                 //TODO: Make it possible to directly connect to the jdownloader client. If it's not working use the relay server.
                 //var tmp = _apiHandler.CallAction<DefaultReturnObject>(device, "/device/getDirectConnectionInfos",
                 //    null, LoginObject, true);
-                return new DeviceHandler(device, _apiHandler, LoginObject, useJdownloaderApi);
+                return DeviceHandler.Create(device, _apiHandler, LoginObject, useJdownloaderApi);
             }
             return null;
         }

@@ -3,7 +3,7 @@
 This is an simple wrapper for the official My.JDownloader.Api written in c#.
 It's an rewritten and extended version of https://github.com/noone2407/MyJDownloaderApi.
 
-Currently it supports: .NET 4.0, .NET 4.5, .NET 4.6 and .NETCore 2.0
+Currently it supports: .NET 4.6 and .NETCore 3.1
 
 > Feel free to request missing calls, bugs or suggestions for improvements.
 
@@ -38,6 +38,17 @@ device.Jd.DoSomethingCool();
 ```
 
 ## Changelog
+
+### __Version 2.4.6__
+Updated:
+- Updated vulnerable .netcore20 to .netcore31
+- Replaced obsolete project tag 'PackageLicenseUrl' with 'PackageLicense'
+- Replaced obsolete project tag 'PackageIconUrl' with 'IconUrl'
+- Set referenced assemblies framework dependent
+- Updated Newtonsoft.Json to latest version 13.0.3
+
+Added:
+- Added asynchronous methods with async await pattern (Left synchronous methods for compatibility purposes).
 
 ### __Version 2.4.5__
 Added:
@@ -106,3 +117,9 @@ if (_JDownloaderHandler.IsConnected)
     deviceHandler.AccountV2.AddAccount("mega.co.nz", "test123", "test123");
 }
 ``` 
+
+#### .NET MAUI (Android)
+
+Add <UseNativeHttpHandler>false</UseNativeHttpHandler> to your project file.
+There is currently a bug with the HttpClient in combination with the Android nativ http handler:
+https://github.com/dotnet/android/issues/9039

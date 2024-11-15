@@ -1,4 +1,5 @@
-﻿using My.JDownloader.Api.ApiHandler;
+﻿using System.Threading.Tasks;
+using My.JDownloader.Api.ApiHandler;
 using My.JDownloader.Api.Models;
 using My.JDownloader.Api.Models.Devices;
 
@@ -17,14 +18,21 @@ namespace My.JDownloader.Api.Namespaces
         /// Asks the client if the linkcrawler is still crawling.
         /// </summary>
         /// <returns>Ture if succesfull</returns>
+        public async Task<bool> IsCrawlingAsync()
+        {
+            var response = await ApiHandler.CallActionAsync<DefaultResponse<bool>>(Device, "/linkcrawler/isCrawling", 
+              null, JDownloaderHandler.LoginObject).ConfigureAwait(false);
+            if (response?.Data == null) return false;
+            return response.Data;
+        }
+
+        /// <summary>
+        /// Asks the client if the linkcrawler is still crawling.
+        /// </summary>
+        /// <returns>Ture if succesfull</returns>
         public bool IsCrawling()
         {
-            var response =
-                ApiHandler.CallAction<DefaultResponse<bool>>(Device, "/linkcrawler/isCrawling", null, JDownloaderHandler.LoginObject);
-            if (response?.Data == null)
-                return false;
-
-            return response.Data;
+            return IsCrawlingAsync().Result;
         }
     }
 }

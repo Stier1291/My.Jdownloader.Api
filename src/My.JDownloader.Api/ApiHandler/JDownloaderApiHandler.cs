@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Web;
 using My.JDownloader.Api.Exceptions;
 using My.JDownloader.Api.Models.Action;
@@ -17,7 +17,7 @@ namespace My.JDownloader.Api.ApiHandler
 {
     public class JDownloaderApiHandler
     {
-        private int _requestId = (int) (DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds;
+        private int _requestId = (int)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds;
         private string _apiUrl = "http://api.jdownloader.org";
 
 
@@ -28,7 +28,7 @@ namespace My.JDownloader.Api.ApiHandler
             _apiUrl = newApiUrl;
         }
 
-        public T CallServer<T>(string query, byte[] key, string param = "")
+        public async Task<T> CallServerAsync<T>(string query, byte[] key, string param = "")
         {
             string rid;
             if (!string.IsNullOrEmpty(param))
@@ -54,14 +54,18 @@ namespace My.JDownloader.Api.ApiHandler
             string url = _apiUrl + query;
             if (!string.IsNullOrWhiteSpace(param))
                 param = string.Empty;
-            string response = PostMethod(url, param, key);
+            string response = await PostMethodAsync(url, param, key).ConfigureAwait(false);
             if (response == null)
                 return default(T);
-            return (T) JsonConvert.DeserializeObject(response, typeof(T));
+            return (T)JsonConvert.DeserializeObject(response, typeof(T));
         }
 
-        public T CallAction<T>(Device device, string action, object param, LoginObject loginObject,
-            bool decryptResponse = false, bool deserialize = true)
+        public T CallServer<T>(string query, byte[] key, string param = "")
+        {
+            return CallServerAsync<T>(query, key, param).Result;
+        }
+
+        public async Task<T> CallActionAsync<T>(Device device, string action, object param, LoginObject loginObject, bool decryptResponse = false, bool deserialize = true)
         {
             if (device == null)
                 throw new ArgumentNullException(nameof(device));
@@ -89,8 +93,7 @@ namespace My.JDownloader.Api.ApiHandler
             //url = url.Replace("172.23.0.8", "89.163.144.231");
             string json = JsonConvert.SerializeObject(callAction);
             json = Encrypt(json, loginObject.DeviceEncryptionToken);
-            string response = PostMethod(url,
-                json, loginObject.DeviceEncryptionToken);
+            string response = await PostMethodAsync(url, json, loginObject.DeviceEncryptionToken).ConfigureAwait(false);
 
             if (response != null && !response.Contains(callAction.RequestId.ToString()))
             {
@@ -98,7 +101,7 @@ namespace My.JDownloader.Api.ApiHandler
                 {
                     string tmp = Decrypt(response, loginObject.DeviceEncryptionToken);
                     if (deserialize)
-                        return (T) JsonConvert.DeserializeObject(tmp, typeof(T));
+                        return (T)JsonConvert.DeserializeObject(tmp, typeof(T));
                     return (T)Convert.ChangeType(response, typeof(T));
                 }
             }
@@ -111,7 +114,12 @@ namespace My.JDownloader.Api.ApiHandler
             return (T)Convert.ChangeType(response, typeof(T));
         }
 
-        private string PostMethod(string url, string body = "", byte[] ivKey = null)
+        public T CallAction<T>(Device device, string action, object param, LoginObject loginObject, bool decryptResponse = false, bool deserialize = true)
+        {
+            return CallActionAsync<T>(device, action, param, loginObject, decryptResponse, deserialize).Result;
+        }
+
+        private async Task<string> PostMethodAsync(string url, string body = "", byte[] ivKey = null)
         {
             try
             {
@@ -120,21 +128,21 @@ namespace My.JDownloader.Api.ApiHandler
                     if (!string.IsNullOrEmpty(body))
                     {
                         StringContent content = new StringContent(body, Encoding.UTF8, "application/aesjson-jd");
-                        using (var response = httpClient.PostAsync(url, content).Result)
+                        using (var response = await httpClient.PostAsync(url, content).ConfigureAwait(false))
                         {
                             if (response != null)
                             {
-                                return response.Content.ReadAsStringAsync().Result;
+                                return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                             }
                         }
                     }
                     else
                     {
-                        using (var response = httpClient.GetAsync(url).Result)
+                        using (var response = await httpClient.GetAsync(url).ConfigureAwait(false))
                         {
                             if (response.StatusCode != HttpStatusCode.OK)
                                 return null;
-                            string result = response.Content.ReadAsStringAsync().Result;
+                            string result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                             if (ivKey != null)
                             {
                                 result = Decrypt(result, ivKey);
