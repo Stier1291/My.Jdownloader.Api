@@ -120,6 +120,7 @@ if (_JDownloaderHandler.IsConnected)
 
 #### .NET MAUI (Android)
 
-Add <UseNativeHttpHandler>false</UseNativeHttpHandler> to your project file.
+If you are faced with strange behaviour of JDownloader calls sometimes not returning a value (null) in MAUI Android app,
+then you may have to add <UseNativeHttpHandler>false</UseNativeHttpHandler> to your project file.
 There is currently a bug with the HttpClient in combination with the Android nativ http handler:
 https://github.com/dotnet/android/issues/9039
